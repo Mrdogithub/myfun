@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	<meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+	<title>Document</title>
+	<script type="text/javascript" src="./js/jquery.min.js"></script>
+	<script type="text/javascript" src="./js/d3.min.js"></script>
+	<script type="text/javascript" src="./js/jquery.easyui.min.js"></script>
+	<script type="text/javascript" src="./js/svg.js"></script>    
+	<script type="text/javascript" src="./js/svg.draw.js"></script>
+	<script type="text/javascript" src="./js/svg-pan-zoom.js"></script>
+<!-- 	<script type="text/javascript" src="http://svgdiscovery.com/E2/D3V2/d3.v2.js"></script> -->
+    <script type="text/javascript" src="http://svgdiscovery.com/B0/Ariutta/dist/svg-pan-zoom.min.js"></script>
+	<link rel="stylesheet" href="./css/easyui.css"/>
+	<style>
+		#svgContent,#svgContainer,#svgMaskContainer,#svgSelection{
+			padding: 0;
+			margin:0;
+			position: absolute;
+			width: 100%;
+			height: 100%;
+		}
+		#svgContainer{
+			opacity: 0.2
+		}
+		#svgSelection{
+			z-index: 999999
+		}
+		.mask{
+			opacity: 0.5
+		}
+
+	</style>
+
+	<style>
+			.axis path,
+			.axis line{
+			fill: none;
+			stroke: black;
+			shape-rendering: crispEdges;
+			}
+
+
+			.axis text {
+			font-family: sans-serif;
+			font-size: 11px;
+			}
+
+	  rect.selection {
+        stroke          : #333;
+        stroke-dasharray: 4px;
+        stroke-opacity  : 0.5;
+        fill            : transparent;
+      }
+
+      rect.cell-border {
+        stroke: #eee;
+        stroke-width:0.3px;   
+      }
+
+      rect.cell-selected {
+        stroke: rgb(51,102,153);
+        stroke-width:0.5px;   
+      }
+
+      rect.cell-hover {
+        stroke: #F00;
+        stroke-width:0.3px;   
+      }
+</style>
+</head>
+<body>
+	<div>
+		<a onclick="zoomIn()" class="easyui-linkbutton">zoom in</a>
+		<a onclick="zoomOut()" class="easyui-linkbutton">zoom out</a>
+		<a onclick="reset()" class="easyui-linkbutton">reset</a>
+		<select  name="language" id = "selectObj" label="" style="width:220px" onClick="loadSVGasXML()">
+			<option value="eal">eal</option>
+			<option value="mol">mol</option>
+			<option value="wrl">wrl</option>
+		</select>
+	</div>
+	<div id="svgMoveHandler">
+		<div id="svgMaskContainer" style="width: 100%;height: 100%">
+	  	</div>
+	  	<div id="svgSelection" style="width: 100%;height: 100%">
+	  	</div>
+		<div id="svgContainer" style="width: 100%;height: 100%">
+	  	</div>
+	</div>
+	<script type="text/javascript">
+		var NS="http://www.w3.org/2000/svg"
+		var ViewRect
+		var PrevScale //--previous scale event---
+		var SVGWidth
+		var SVGHeight
+		var D3ZoomG
+		var mySVG
+		var _obj
+
+		var startPosition
+		var endPosition
+		var _isRightToLeft
+		var trackLength
+
+		var svgDiv = document.getElementById('svgContainer')
+		var svgMask =  document.getElementById('svgMaskContainer')
+		var data={"date":1541585255053};
+
+
+// $.ajax(
+// {
+
+//    url:'http://10.225.66.20:9095/ETMS-rest/services/possessionInfo/lrlPossInfo/1490941',
+//    type:'POST',
+//    data: JSON.stringify(data),
+//    dataType:'json',
+//    contentType: 'application/json',
+//    success:function(response,xml){
+
+//       alert("success");
+//       console.log(1,response)
+//    },
+//    error:function(status){
+//       alert("false");
+//    }
+// });
+
+
+	// $.ajax({
+	// 		headers: {
+	// 	"Accept": "application/json; charset=utf-8",
+	// 	"Content-Type":"application/json"
+
+	// },
+	// 	url:'http://10.225.66.12:9095/ETMS-rest/services/locationBooking/getLines',
+	// 	type:'POST',
+	// 	dataType:'JSON',
+	// 	beforeSend: function(request) {
+	// 		request.setRequestHeader("Access-Controll-Request-Headers" ,"accept, content-type");
+	// 		request.setRequestHeader("Access-Controll-Request-Method" ,"POST");
+	// 		request.setRequestHeader("Content-Type","application/json");
+	// 		},
+	// 		data:JSON.stringify( {
+	// 		"lineGroupId": "75",
+	// 		"sessionId": "ZmeD5teucxflqWlnh3NDjIu"
+	// 		}),
+	// 	success:function(response,xml){
+
+	// 		alert("success");
+	// 		console.log(1,response)
+	// 	},
+	// 	error:function(status){
+	// 		alert("false");
+	// 	}
+	// });
+
+
+
+function loadSVGasXML(){
+
+	var _baseUrl = 'http://localhost:1000/MTR/tracks/'
+	var _selectObj = document.getElementById('selectObj')
+	var _index = _selectObj.selectedIndex
+	var _svgName = _selectObj.options[_index].value +'.svg'
+	var xmlString = ""
+	var drawing =""
+	var _viewBox = ""
+	var SVGFile= _baseUrl + _svgName
+	var loadXML = new XMLHttpRequest;
+	var _viewBoxString = ''
+	var stopMove = false;
+
+
+	var svgGroup = d3.select('#svgMoveHandler')
+	
+
+	function handler(){
+		if(loadXML.readyState == 4)
+		{
+			if (loadXML.status == 200) //---loaded ok---
+			{
+				xmlString=loadXML.responseText
+				svgDiv.innerHTML=xmlString
+				svgMask.innerHTML = xmlString
+				// 从svg 中 获取viewbox参数
+				_viewBoxString = d3.select("#svgContainer").selectAll('svg').attr('viewBox')
+				_viewBox = _viewBoxString.split(' ')
+
+				d3.select("#svgContainer").selectAll('svg').attr('id','svgElement')
+
+				d3.select('#svgMaskContainer').selectAll('svg')
+					// .attr('viewbox',_viewBoxString)
+					.select('g')
+					.attr('clip-path','url(#myClip)')
+
+
+				d3.select('#svgMaskContainer').selectAll('svg')
+					.append('defs')
+					.append('clipPath')
+					.attr('id','myClip')
+				
+				
+				// 生成drawing容器
+				var drawing = new SVG('svgSelection')
+									.size('100%', '100%')
+									.attr('viewbox',_viewBoxString)
+
+				var rect = drawing.rect();
+									
+		        drawing.on('mousedown', function(e){
+		        	rect = drawing.rect().attr('stroke-width',1).attr('fill','none');
+		            rect.draw(e);
+		        }, false);
+
+		        drawing.on('mouseup', function(e){
+		            rect.draw('stop', e);
+		            rect.node['outerHTML'].split('=')
+		            var _addRect = d3.select('#svgSelection').selectAll('svg').select('#'+rect.node['id'])
+		            var _y = Number(_addRect.attr('y')) - Number(_addRect.attr('height'))
+		            rect.attr('stroke-width',0)
+		            d3.select('#svgMaskContainer').selectAll('defs')
+		            	.select('#myClip')
+		            	.append('rect')
+		            	.attr('width',_addRect.attr('width'))
+		            	.attr('height',_addRect.attr('height'))
+		            	.attr('x',_addRect.attr('x'))
+		            	.attr('y',_addRect.attr('y'))
+		        }, false);
+		        
+		        rect.on('drawstop', function(e){
+		            // remove listenere
+		            e = null
+		        });
+
+		
+
+				// //获取比例尺
+				var _x = d3.scaleLinear().domain([_viewBox[0],_viewBox[2]]).range([-0.0260,37.4610])
+
+
+				// //生成坐标轴
+				var _xAxis = d3.scaleLinear().domain([-0.0260,37.4610]).range([_viewBox[0],_viewBox[2]])
+				var axis = d3.axisBottom(_xAxis).ticks(10)
+				var getAxis = d3.select("#svgContainer").selectAll("svg")
+				.append('g').attr("transform" ,"translate("+20+","+d3.max(4685.90002)+")")
+				.attr( "class","axis" ).call(axis)
+
+
+					//获取 svg 路轨长度
+				updateLength(-0.0260, 37.4610)
+
+			 	//svg 缩放 拖住
+				// svgPanZoom('#svgContainer', {
+				// 	viewportSelector: '.svgElement',
+				// 	zoomEnabled: true,
+				// 	fit: 1,
+				// 	center: 1, 
+				// 	controlIconsEnabled: true,
+				// 	dblClickZoomEnabled: false,
+				// 	mouseWheelZoomEnabled:true
+				// });
+
+				var dragHandler = d3.drag()
+			        .on("drag", function (d) {
+			            d3.select(this)
+			                .attr("x", d.x = d3.event.x)
+			                .attr("y", d.y = d3.event.y);
+			        });
+
+			    dragHandler(d3.select("#svgContainer").selectAll('svg'));
+
+
+				// function zoom() {
+			 //        svgGroup.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+			 //    }
+
+
+			    // define the zoomListener which calls the zoom function on the "zoom" event constrained within the scaleExtents
+			 //    var zoomListener = d3.behavior.zoom().scaleExtent([0.1, 3]).on("zoom", zoom);
+
+				// d3.select("#svgContainer").selectAll('svg').call(zoomListener)
+			    //document.getElementById("globalG").addEventListener("click", showPoint, false);
+			}
+		}
+	}
+
+	function showPoint(evt) {
+		var target=evt.target
+		var _viewBox = document.getElementById('svgElement').viewBox
+		var w = 100
+		var h = 110
+		document.getElementById('svgElement').setAttribute('viewbox', '0 0 ' + w + ' ' + h);
+	
+		var pnt = svgElement.createSVGPoint();
+		pnt.x = evt.clientX;
+		pnt.y = evt.clientY;
+
+
+		var SCTM = target.getScreenCTM();
+		console.log("SCTM====")
+		console.log(1, target)
+		var iPNT = pnt.matrixTransform(SCTM.inverse());
+
+		console.log(SCTM + ":" +iPNT)
+		console.log(1,SCTM)
+		console.log(1,iPNT)
+		chainageToX(iPNT.x)
+	}
+
+
+	function rnd2(num) {
+		return Math.round(num*100)/100
+	}
+
+	function updateLength (start, end) {
+		startPosition = start*1000;
+		endPosition = end*1000;
+		_isRightToLeft = (startPosition > endPosition)?true:false;
+		if(_isRightToLeft)
+		{
+			trackLength = startPosition - endPosition;
+		}
+		else
+		{
+			trackLength = endPosition - startPosition;
+		}
+
+		console.log('trackLength:' + trackLength)
+	}
+
+	function chainageToX(chainage) {
+		var rate = chainage / 4685.90002
+		var x = (startPosition + rate * trackLength * (_isRightToLeft? -1:1)) * 0.001
+		console.log('x:' + x)
+		return x
+	}
+
+	if (loadXML != null){
+		loadXML.open("GET", SVGFile, true);
+		loadXML.onreadystatechange = handler;
+		loadXML.send();
+	}
+}
+	</script>
+</body>
+</html>
