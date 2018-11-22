@@ -13,12 +13,24 @@
 	<script type="text/javascript" src="./js/svg-pan-zoom.js"></script>
 <!-- 	<script type="text/javascript" src="http://svgdiscovery.com/E2/D3V2/d3.v2.js"></script> -->
     <script type="text/javascript" src="http://svgdiscovery.com/B0/Ariutta/dist/svg-pan-zoom.min.js"></script>
+
+<!-- <script src="//d3js.org/d3.v3.min.js"></script> -->
+	<script src="https://d3js.org/d3-dispatch.v1.min.js"></script>
+	<script src="https://d3js.org/d3-selection.v1.min.js"></script>
+	<script src="https://d3js.org/d3-drag.v1.min.js"></script>
 	<link rel="stylesheet" href="./css/easyui.css"/>
 	<style>
 		#svgContent,#svgContainer,#svgMaskContainer,#svgSelection{
 			padding: 0;
 			margin:0;
 			position: absolute;
+			width: 100%;
+			height: 100%;
+		}
+		#svgContent,
+		#svgContainer svg,
+		#svgMaskContainer svg,
+		#svgSelection svg{
 			width: 100%;
 			height: 100%;
 		}
@@ -76,6 +88,8 @@
 		<a onclick="zoomIn()" class="easyui-linkbutton">zoom in</a>
 		<a onclick="zoomOut()" class="easyui-linkbutton">zoom out</a>
 		<a onclick="reset()" class="easyui-linkbutton">reset</a>
+		<a onclick="drag()" class="easyui-linkbutton">drag</a>
+		<a onclick="select()" class="easyui-linkbutton">select</a>
 		<select  name="language" id = "selectObj" label="" style="width:220px" onClick="loadSVGasXML()">
 			<option value="eal">eal</option>
 			<option value="mol">mol</option>
@@ -83,11 +97,11 @@
 		</select>
 	</div>
 	<div id="svgMoveHandler">
-		<div id="svgMaskContainer" style="width: 100%;height: 100%">
+		<div id="svgMaskContainer">
 	  	</div>
-	  	<div id="svgSelection" style="width: 100%;height: 100%">
+	  	<div id="svgSelection">
 	  	</div>
-		<div id="svgContainer" style="width: 100%;height: 100%">
+		<div id="svgContainer">
 	  	</div>
 	</div>
 	<script type="text/javascript">
@@ -107,9 +121,16 @@
 
 		var svgDiv = document.getElementById('svgContainer')
 		var svgMask =  document.getElementById('svgMaskContainer')
+		var svgSelectionContainer = document.getElementById('svgSelection')
 		var data={"date":1541585255053};
+		var disableZoom = true
+		function select() {
+			disableZoom = true
+		}
 
-
+		function drag() {
+			disableZoom = false
+		}
 // $.ajax(
 // {
 
@@ -185,10 +206,12 @@ function loadSVGasXML(){
 				xmlString=loadXML.responseText
 				svgDiv.innerHTML=xmlString
 				svgMask.innerHTML = xmlString
+				svgSelectionContainer.innerHTML = xmlString
 				// 从svg 中 获取viewbox参数
 				_viewBoxString = d3.select("#svgContainer").selectAll('svg').attr('viewBox')
 				_viewBox = _viewBoxString.split(' ')
 
+				_svgMaskG = d3.select('#svgMaskContainer').selectAll('svg').select('g')
 				d3.select("#svgContainer").selectAll('svg').attr('id','svgElement')
 
 				d3.select('#svgMaskContainer').selectAll('svg')
@@ -202,87 +225,213 @@ function loadSVGasXML(){
 					.append('clipPath')
 					.attr('id','myClip')
 				
-				
-				// 生成drawing容器
-				var drawing = new SVG('svgSelection')
-									.size('100%', '100%')
-									.attr('viewbox',_viewBoxString)
+				d3.select('#svgSelection').selectAll('svg')
+					.select('g')
+					.attr('style','opacity:0')
 
-				var rect = drawing.rect();
-									
-		        drawing.on('mousedown', function(e){
-		        	rect = drawing.rect().attr('stroke-width',1).attr('fill','none');
-		            rect.draw(e);
-		        }, false);
 
-		        drawing.on('mouseup', function(e){
-		            rect.draw('stop', e);
-		            rect.node['outerHTML'].split('=')
-		            var _addRect = d3.select('#svgSelection').selectAll('svg').select('#'+rect.node['id'])
-		            var _y = Number(_addRect.attr('y')) - Number(_addRect.attr('height'))
-		            rect.attr('stroke-width',0)
-		            d3.select('#svgMaskContainer').selectAll('defs')
-		            	.select('#myClip')
-		            	.append('rect')
-		            	.attr('width',_addRect.attr('width'))
-		            	.attr('height',_addRect.attr('height'))
-		            	.attr('x',_addRect.attr('x'))
-		            	.attr('y',_addRect.attr('y'))
-		        }, false);
+				// console.log(SVG().get("svgMaskContainerSVG"))
+				// // 生成drawing容器
+				// var drawing = new SVG('svgSelection')
+				// 					.size('100%', '100%')
+				// 					.attr('viewbox',_viewBoxString)
+
+				// var rect = drawing.rect();
+				// console.log(1, drawing)		
+		  //       drawing.on('mousedown', function(e){
+		  //       	rect = drawing.rect().attr('stroke-width',1).attr('fill','none');
+		  //       	console.log(1,e)
+		  //           rect.draw(e);
+		  //       }, false);
+
+		  //       drawing.on('mouseup', function(e){
+		  //           rect.draw('stop', e);
+		  //           console.log(1,e)
+		  //           rect.node['outerHTML'].split('=')
+		  //           var _addRect = d3.select('#svgSelection').selectAll('svg').select('#'+rect.node['id'])
+		  //           var _y = Number(_addRect.attr('y')) - Number(_addRect.attr('height'))
+		  //           rect.attr('stroke-width',0)
+		  //           d3.select('#svgMaskContainer').selectAll('defs')
+		  //           	.select('#myClip')
+		  //           	.append('rect')
+		  //           	.attr('width',_addRect.attr('width'))
+		  //           	.attr('height',_addRect.attr('height'))
+		  //           	.attr('x',_addRect.attr('x'))
+		  //           	.attr('y',_addRect.attr('y'))
+		  //       }, false);
 		        
-		        rect.on('drawstop', function(e){
-		            // remove listenere
-		            e = null
-		        });
-
-		
+		  //       rect.on('drawstop', function(e){
+		  //           // remove listenere
+		  //           e = null
+		  //       });
+				
 
 				// //获取比例尺
-				var _x = d3.scaleLinear().domain([_viewBox[0],_viewBox[2]]).range([-0.0260,37.4610])
+				// var _x = d3.scaleLinear().domain([_viewBox[0],_viewBox[2]]).range([-0.0260,37.4610])
 
 
-				// //生成坐标轴
-				var _xAxis = d3.scaleLinear().domain([-0.0260,37.4610]).range([_viewBox[0],_viewBox[2]])
-				var axis = d3.axisBottom(_xAxis).ticks(10)
-				var getAxis = d3.select("#svgContainer").selectAll("svg")
-				.append('g').attr("transform" ,"translate("+20+","+d3.max(4685.90002)+")")
-				.attr( "class","axis" ).call(axis)
+				// // //生成坐标轴
+				// var _xAxis = d3.scaleLinear().domain([-0.0260,37.4610]).range([_viewBox[0],_viewBox[2]])
+				// var axis = d3.axisBottom(_xAxis).ticks(10)
+				// var getAxis = d3.select("#svgContainer").selectAll("svg")
+				// .append('g').attr("transform" ,"translate("+20+","+d3.max(4685.90002)+")")
+				// .attr( "class","axis" ).call(axis)
 
 
 					//获取 svg 路轨长度
 				updateLength(-0.0260, 37.4610)
 
-			 	//svg 缩放 拖住
-				// svgPanZoom('#svgContainer', {
-				// 	viewportSelector: '.svgElement',
-				// 	zoomEnabled: true,
-				// 	fit: 1,
-				// 	center: 1, 
-				// 	controlIconsEnabled: true,
-				// 	dblClickZoomEnabled: false,
-				// 	mouseWheelZoomEnabled:true
-				// });
-
-				var dragHandler = d3.drag()
-			        .on("drag", function (d) {
-			            d3.select(this)
-			                .attr("x", d.x = d3.event.x)
-			                .attr("y", d.y = d3.event.y);
-			        });
-
-			    dragHandler(d3.select("#svgContainer").selectAll('svg'));
-
 
 				// function zoom() {
-			 //        svgGroup.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
-			 //    }
+    //     svgGroup.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+    // }
 
 
-			    // define the zoomListener which calls the zoom function on the "zoom" event constrained within the scaleExtents
-			 //    var zoomListener = d3.behavior.zoom().scaleExtent([0.1, 3]).on("zoom", zoom);
+    // define the zoomListener which calls the zoom function on the "zoom" event constrained within the scaleExtents
+   //  function zoom() {
+   //      svgGroup.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+   //  }
+   //  var zoomListener = d3.zoom().scaleExtent([0.1, 3]).on("zoom", zoom);
 
-				// d3.select("#svgContainer").selectAll('svg').call(zoomListener)
-			    //document.getElementById("globalG").addEventListener("click", showPoint, false);
+   // d3.select("#svgContainer").selectAll("svg")
+   //      .call(zoomListener);
+
+	var sa=d3.select("#svgSelection").select('svg')
+		.on("mousedown", function() {
+          if( !d3.event.altKey ) {
+             d3.selectAll(".cell-selected").classed("cell-selected",false);
+             d3.selectAll(".rowLabel").classed("text-selected",false);
+             d3.selectAll(".colLabel").classed("text-selected",false);
+          }
+         var p = d3.mouse(this);
+        sa.append("rect")
+        	.attr('rx',0)
+        	.attr('ry',0)
+        	.attr('class','selection')
+        	.attr('x',p[0])
+        	.attr('y',p[1])
+        	.attr('width',1)
+        	.attr('height',1)
+        	stopMove = false
+      })
+		.on("mousemove", function() {
+         var s = sa.select("rect.selection");
+      	 var move
+         if(!s.empty() && !stopMove) {
+             var p = d3.mouse(this),
+                 d = {
+                     x       : parseInt(s.attr("x"), 10),
+                     y       : parseInt(s.attr("y"), 10),
+                     width   : parseInt(s.attr("width"), 10),
+                     height  : parseInt(s.attr("height"), 10)
+                 },
+                 move = {
+                     x : p[0] - d.x,
+                     y : p[1] - d.y
+                 }
+             ;
+      
+             if(move.x < 1 || (move.x*2<d.width)) {
+                 d.x = p[0];
+                 d.width -= move.x;
+             } else {
+                 d.width = move.x;       
+             }
+      
+             if(move.y < 1 || (move.y*2<d.height)) {
+                 d.y = p[1];
+                 d.height -= move.y;
+             } else {
+                 d.height = move.y;       
+             }
+             s.attr('x',d.x)
+             	.attr('y',d.y)
+             	.attr('width',  d.width )
+             	.attr('height', d.height);
+      
+                 // deselect all temporary selected state objects
+             d3.selectAll('.cell-selection.cell-selected').classed("cell-selected", false);
+             d3.selectAll(".text-selection.text-selected").classed("text-selected",false);
+
+             // d3.selectAll('.cell').filter(function(cell_d, i) {
+
+             // 	d3.select(this)
+             //         .classed("cell-selection", true)
+             //         .classed("cell-selected", true);
+             //     if(
+             //         !d3.select(this).classed("cell-selected") && 
+             //             // inner circle inside selection frame
+             //         (this.x.baseVal.value)+cellSize >= d.x && (this.x.baseVal.value)<=d.x+d.width && 
+             //         (this.y.baseVal.value)+cellSize >= d.y && (this.y.baseVal.value)<=d.y+d.height
+             //     ) {
+      
+             //         d3.select(this)
+             //         .classed("cell-selection", true)
+             //         .classed("cell-selected", true);
+
+             //         d3.select(".r"+(cell_d.row-1))
+             //         .classed("text-selection",true)
+             //         .classed("text-selected",true);
+
+             //         d3.select(".c"+(cell_d.col-1))
+             //         .classed("text-selection",true)
+             //         .classed("text-selected",true);
+             //     }
+             // });
+         }
+      })
+		.on("mouseup", function(e) {
+        // remove selection frame
+	        stopMove = true
+	        console.log(sa.selectAll("rect.selection"))
+
+	        d3.select('#svgMaskContainer')
+	        	.selectAll('svg')
+
+	        var _width = sa.selectAll("rect.selection").attr('width')
+	        var _height = sa.selectAll("rect.selection").attr('height')
+	        var _x = sa.selectAll("rect.selection").attr('x')
+	        var _y = sa.selectAll("rect.selection").attr('y')
+
+			d3.select('#svgMaskContainer').selectAll('defs')
+				.select('#myClip')
+				.append('rect')
+				.attr('width',_width)
+				.attr('height',_height)
+				.attr('x',_x)
+				.attr('y',_y)
+
+	        console.log(sa.selectAll('rect.selection').datum())
+	        sa.selectAll("rect.selection").remove();
+	            // remove temporary selection marker class
+	        d3.selectAll('.cell-selection').classed("cell-selection", false);
+	        d3.selectAll(".text-selection").classed("text-selection",false);
+      	})
+		.on("mouseout", function() {
+         // if(d3.event.relatedTarget.tagName=='rect') {
+         //         // remove selection frame
+             sa.selectAll("rect.selection").remove();
+         //         // remove temporary selection marker class
+         //     d3.selectAll('.cell-selection').classed("cell-selection", false);
+         //     d3.selectAll(".rowLabel").classed("text-selected",false);
+         //     d3.selectAll(".colLabel").classed("text-selected",false);
+         // }
+      });
+
+
+
+ 		var container = d3.select('#svgMoveHandler').selectAll('svg').selectAll('g')
+		var zoom = d3.zoom().scaleExtent([1, 10]).on("zoom", zoomed);
+		function zoomed() {
+			if(disableZoom){
+				return null
+			} else{
+				container.attr("transform", "translate(" + d3.event.transform.x + ","+d3.event.transform.y+")scale(" + d3.event.transform.k + ")");
+			}
+
+		}
+ 		d3.selectAll("svg").call(zoom);
+
 			}
 		}
 	}
