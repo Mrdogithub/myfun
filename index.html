@@ -8,6 +8,7 @@
 	<script type="text/javascript" src="./js/jquery.min.js"></script>
 	<script type="text/javascript" src="./js/d3.min.js"></script>
 	<script type="text/javascript" src="./js/jquery.easyui.min.js"></script>
+<script src="./js/jquery.panzoom.js"></script>
 	<!-- <script type="text/javascript" src="./js/svg.js"></script>    
 	<script type="text/javascript" src="./js/svg.draw.js"></script>
 	<script type="text/javascript" src="./js/svg-pan-zoom.js"></script> -->
@@ -18,6 +19,8 @@
 	<!-- <script src="https://d3js.org/d3-dispatch.v1.min.js"></script>
 	<script src="https://d3js.org/d3-selection.v1.min.js"></script>
 	<script src="https://d3js.org/d3-drag.v1.min.js"></script> -->
+	<script src="https://d3js.org/d3-drag.v1.min.js"></script>
+<script src="https://d3js.org/d3-zoom.v1.min.js"></script>
 	<link rel="stylesheet" href="./css/easyui.css"/>
 	<style>
 		#svgContent,#svgContainer,#svgMaskContainer,#svgSelection{
@@ -125,6 +128,22 @@
 		var data={"date":1541585255053};
 		var disableZoom = true
 
+
+		var _baseUrl = './tracks/'
+		var _selectObj = document.getElementById('selectObj')
+		var _index = _selectObj.selectedIndex
+		var _svgName = _selectObj.options[_index].value +'.svg'
+		var xmlString = ""
+		var drawing =""
+		var _viewBox = ""
+		var SVGFile= _baseUrl + _svgName
+		var loadXML = new XMLHttpRequest;
+		var _viewBoxString = ''
+		var stopMove = false;
+		var _SVG = ''
+		var _isDisable = null
+		var svgGroup = d3.select('#svgMoveHandler')
+		
 // $.ajax(
 // {
 
@@ -172,260 +191,299 @@
 	// 	}
 	// });
 
-
-
 	function dragSVG() {
-		var container = d3.select('#svgMoveHandler').selectAll('svg').selectAll('g')
-		var zoom = d3.zoom().scaleExtent([1, 10]).on("zoom", zoomed)
-		function zoomed() {
-			d3.event.srcElement.stopPropagation();
-			container.attr("transform", "translate(" + d3.event.transform.x + ","+d3.event.transform.y+")scale(" + d3.event.transform.k + ")");
-		}
-
-		d3.selectAll("svg").call(zoom);
+		
+		disableZoom = false
+		_isDisable = disableZoom? null:zoomed
+		// dragFn()
+		
 	}
-function loadSVGasXML(){
-
-	var _baseUrl = './tracks/'
-	var _selectObj = document.getElementById('selectObj')
-	var _index = _selectObj.selectedIndex
-	var _svgName = _selectObj.options[_index].value +'.svg'
-	var xmlString = ""
-	var drawing =""
-	var _viewBox = ""
-	var SVGFile= _baseUrl + _svgName
-	var loadXML = new XMLHttpRequest;
-	var _viewBoxString = ''
-	var stopMove = false;
 
 
-	var svgGroup = d3.select('#svgMoveHandler')
+	function select(){
+		disableZoom = true
+		// d3.selectAll("svg").zoom().scaleExtent([1, 10]).on("zoom", null)
+		if(d3.select("#svgSelection").selectAll('svg')){
+			d3.select("#svgSelection").selectAll('svg')
+				.on( "mousedown",mousedownFn)
+				.on('mousemove',mousemoveFn)
+				.on('mouseup',mouseupFn)
+				.on('mouseout',mouseoutFn)
+		}
+	}
 	
 
-	function handler(){
-		if(loadXML.readyState == 4)
-		{
-			if (loadXML.status == 200) //---loaded ok---
+	var zoomed = function() {
+		
+	}
+
+	var zoomAndDrag =  function() {
+
+		
+	}
+	
+	var mousedownFn = function () {
+		if(!disableZoom) return
+		if(d3.event && !d3.event.ctrlKey) {
+			d3.selectAll( 'rect.selection')
+			.classed( "selected", false);
+		}
+		var p = d3.mouse(this);
+		_SVG.append("rect")
+			.attr('rx',0)
+			.attr('ry',0)
+			.attr('class','selection')
+			.attr('x',p[0])
+			.attr('y',p[1])
+			.attr('width',1)
+			.attr('height',1)
+
+	}
+
+	var mousemoveFn = function () {
+		if(!disableZoom) return 
+		var s = _SVG.selectAll( "rect.selection");
+
+		if( !s.empty()) {
+			var p = d3.mouse( this),
+				d = {
+					x       : parseInt( s.attr( "x"), 10),
+					y       : parseInt( s.attr( "y"), 10),
+					width   : parseInt( s.attr( "width"), 10),
+					height  : parseInt( s.attr( "height"), 10)
+				},
+				move = {
+					x : p[0] - d.x,
+					y : p[1] - d.y
+				}
+			;
+
+			if( move.x < 1 || (move.x*2<d.width)) {
+				d.x = p[0];
+				d.width -= move.x;
+			} else {
+				d.width = move.x;       
+			}
+
+			if( move.y < 1 || (move.y*2<d.height)) {
+				d.y = p[1];
+				d.height -= move.y;
+			} else {
+				d.height = move.y;       
+			}
+		
+			s.attr('x',d.x).attr('y',d.y).attr('width',  d.width ).attr('height', d.height);
+
+				// deselect all temporary selected state objects
+			// d3.selectAll( 'g.state.selection.selected').classed( "selected", false);
+
+			// d3.selectAll( 'g.state >circle.inner').each( function( state_data, i) {
+			//     if( 
+			//         !d3.select( this).classed( "selected") && 
+			//             // inner circle inside selection frame
+			//         state_data.x-radius>=d.x && state_data.x+radius<=d.x+d.width && 
+			//         state_data.y-radius>=d.y && state_data.y+radius<=d.y+d.height
+			//     ) {
+
+			//         d3.select( this.parentNode)
+			//         .classed( "selection", true)
+			//         .classed( "selected", true);
+			//     }
+			// });
+		}
+	}
+
+	var mouseupFn = function () {
+		if(!disableZoom) return 
+		var _width = _SVG.selectAll("rect.selection").attr('width')
+				var _height = _SVG.selectAll("rect.selection").attr('height')
+				var _x = _SVG.selectAll("rect.selection").attr('x')
+				var _y = _SVG.selectAll("rect.selection").attr('y')
+
+		d3.select('#svgMaskContainer').selectAll('svg').select('defs')
+			.select('#myClip')
+			.append('rect')
+			.attr('width',_width)
+			.attr('height',_height)
+			.attr('x',_x)
+			.attr('y',_y)
+		// remove selection frame
+		_SVG.selectAll( "rect.selection").remove();
+
+			// remove temporary selection marker class
+		_SVG.selectAll( 'rect.selection').classed( "selection", false);
+	}
+
+	var mouseoutFn = function () {
+		if(!disableZoom) return 
+		stopMouseMove = true
+		// if( d3.event.relatedTarget.tagName=='rect') {
+		//         // remove selection frame
+		// 		_SVG.selectAll( "rect.selection").remove();
+
+		//         // remove temporary selection marker class
+		//     d3.selectAll( 'g.state.selection').classed( "selection", false);
+		// }
+	}
+
+	function loadSVGasXML(){
+
+
+
+		function handler(){
+			if(loadXML.readyState == 4)
 			{
-				xmlString=loadXML.responseText
-				svgDiv.innerHTML=xmlString
-				svgMask.innerHTML = xmlString
-				svgSelectionContainer.innerHTML = xmlString
-				// 从svg 中 获取viewbox参数
-				_viewBoxString = d3.select("#svgContainer").selectAll('svg').attr('viewBox')
-				_viewBox = _viewBoxString.split(' ')
+				if (loadXML.status == 200) //---loaded ok---
+				{
+					xmlString=loadXML.responseText
+					svgDiv.innerHTML=xmlString
+					svgMask.innerHTML = xmlString
+					svgSelectionContainer.innerHTML = xmlString
+					// 从svg 中 获取viewbox参数
+					_viewBoxString = d3.select("#svgContainer").selectAll('svg').attr('viewBox')
+					_viewBox = _viewBoxString.split(' ')
 
-				_svgMaskG = d3.select('#svgMaskContainer').selectAll('svg').select('g')
-				d3.select("#svgContainer").selectAll('svg').attr('id','svgElement')
+					_svgMaskG = d3.select('#svgMaskContainer').selectAll('svg').select('g')
+					d3.select("#svgContainer").selectAll('svg').attr('id','svgElement')
 
-				d3.select('#svgMaskContainer').selectAll('svg')
-					// .attr('viewbox',_viewBoxString)
-					.select('g')
-					.attr('clip-path','url(#myClip)')
-
-
-				d3.select('#svgMaskContainer').selectAll('svg')
-					.append('defs')
-					.append('clipPath')
-					.attr('id','myClip')
-				
-				d3.select('#svgSelection').selectAll('svg')
-					.select('g')
-					.attr('style','opacity:0')
-				
-
-				// //获取比例尺
-				// var _x = d3.scaleLinear().domain([_viewBox[0],_viewBox[2]]).range([-0.0260,37.4610])
+					d3.select('#svgMaskContainer').selectAll('svg')
+						// .attr('viewbox',_viewBoxString)
+						.select('g')
+						.attr('clip-path','url(#myClip)')
 
 
-				// // //生成坐标轴
-				// var _xAxis = d3.scaleLinear().domain([-0.0260,37.4610]).range([_viewBox[0],_viewBox[2]])
-				// var axis = d3.axisBottom(_xAxis).ticks(10)
-				// var getAxis = d3.select("#svgContainer").selectAll("svg")
-				// .append('g').attr("transform" ,"translate("+20+","+d3.max(4685.90002)+")")
-				// .attr( "class","axis" ).call(axis)
+					d3.select('#svgMaskContainer').selectAll('svg')
+						.append('defs')
+						.append('clipPath')
+						.attr('id','myClip')
+					
+					d3.select('#svgSelection').selectAll('svg')
+						.select('g')
+						.attr('style','opacity:0')
+					
+
+					// //获取比例尺
+					// var _x = d3.scaleLinear().domain([_viewBox[0],_viewBox[2]]).range([-0.0260,37.4610])
 
 
-					//获取 svg 路轨长度
-				updateLength(-0.0260, 37.4610)
+					// // //生成坐标轴
+					// var _xAxis = d3.scaleLinear().domain([-0.0260,37.4610]).range([_viewBox[0],_viewBox[2]])
+					// var axis = d3.axisBottom(_xAxis).ticks(10)
+					// var getAxis = d3.select("#svgContainer").selectAll("svg")
+					// .append('g').attr("transform" ,"translate("+20+","+d3.max(4685.90002)+")")
+					// .attr( "class","axis" ).call(axis)
 
-					var _SVG = d3.select("#svgSelection").selectAll('svg')
-		_SVG.on( "mousedown", function() {
-			d3.event.srcElement.stopPropagation();
-			if(!disableZoom) {
-				return
 
-			} else{
-				if( !d3.event.ctrlKey) {
-					d3.selectAll( 'rect.selection').classed( "selected", false);
+						//获取 svg 路轨长度
+					updateLength(-0.0260, 37.4610)
+
+					_SVG = d3.select("#svgSelection").selectAll('svg')
+					_SVG.on( "mousedown", mousedownFn)
+					.on( "mousemove", mousemoveFn)
+					.on( "mouseup", mouseupFn)
+					.on( "mouseout", mouseoutFn);
+
+				function zoomed() {
+					d3.selectAll('svg').selectAll('g').attr("transform", "translate(" 
+						+ d3.event.transform.x + ","
+						+ d3.event.transform.y+")scale(" 
+						+ d3.event.transform.k + ")"
+					);
+			    }
+				var zoomListener = d3.zoom().scaleExtent([0.1, 3]).on("zoom", zoomed);
+				d3.select('#svgMoveHandler').call(zoomListener)
+
 				}
-
-				var p = d3.mouse( this);
-				_SVG.append("rect")
-						.attr('rx',0)
-						.attr('ry',0)
-						.attr('class','selection')
-						.attr('x',p[0])
-						.attr('y',p[1])
-						.attr('width',1)
-						.attr('height',1)
 			}
-		})
-		.on( "mousemove", function() {
-			d3.event.srcElement.stopPropagation();
-			if(!disableZoom) return 
-			var s = _SVG.selectAll( "rect.selection");
+		}
 
-			if( !s.empty()) {
-				var p = d3.mouse( this),
-					d = {
-						x       : parseInt( s.attr( "x"), 10),
-						y       : parseInt( s.attr( "y"), 10),
-						width   : parseInt( s.attr( "width"), 10),
-						height  : parseInt( s.attr( "height"), 10)
-					},
-					move = {
-						x : p[0] - d.x,
-						y : p[1] - d.y
-					}
-				;
+		// var zoomListener = function(){
+		// 	d3.zoom().scaleExtent([1, 10]).on("zoom", function() {
+		// 		var container = d3.select('#svgMoveHandler')
+		// 						.selectAll('svg').selectAll('g')
+		// 		if(d3.select("#svgSelection").selectAll('svg')){
+		// 			d3.select("#svgSelection").selectAll('svg')
+		// 				.on( "mousedown",null)
+		// 				.on('mousemove',null)
+		// 				.on('mouseup',null)
+		// 				.on('mouseout',null)
+		// 		}
 
-				if( move.x < 1 || (move.x*2<d.width)) {
-					d.x = p[0];
-					d.width -= move.x;
-				} else {
-					d.width = move.x;       
-				}
+		// 		container.attr("transform", "translate(" 
+		// 			+ d3.event.transform.x + ","
+		// 			+ d3.event.transform.y+")scale(" 
+		// 			+ d3.event.transform.k + ")"
+		// 		);
+		// 	})
+		// }
+		
 
-				if( move.y < 1 || (move.y*2<d.height)) {
-					d.y = p[1];
-					d.height -= move.y;
-				} else {
-					d.height = move.y;       
-				}
-			
-				s.attr('x',d.x).attr('y',d.y).attr('width',  d.width ).attr('height', d.height);
+		
 
-					// deselect all temporary selected state objects
-				// d3.selectAll( 'g.state.selection.selected').classed( "selected", false);
 
-				// d3.selectAll( 'g.state >circle.inner').each( function( state_data, i) {
-				//     if( 
-				//         !d3.select( this).classed( "selected") && 
-				//             // inner circle inside selection frame
-				//         state_data.x-radius>=d.x && state_data.x+radius<=d.x+d.width && 
-				//         state_data.y-radius>=d.y && state_data.y+radius<=d.y+d.height
-				//     ) {
 
-				//         d3.select( this.parentNode)
-				//         .classed( "selection", true)
-				//         .classed( "selected", true);
-				//     }
-				// });
+
+		function showPoint(evt) {
+			var target=evt.target
+			var _viewBox = document.getElementById('svgElement').viewBox
+			var w = 100
+			var h = 110
+			document.getElementById('svgElement').setAttribute('viewbox', '0 0 ' + w + ' ' + h);
+		
+			var pnt = svgElement.createSVGPoint();
+			pnt.x = evt.clientX;
+			pnt.y = evt.clientY;
+
+
+			var SCTM = target.getScreenCTM();
+			console.log("SCTM====")
+			console.log(1, target)
+			var iPNT = pnt.matrixTransform(SCTM.inverse());
+
+			console.log(SCTM + ":" +iPNT)
+			console.log(1,SCTM)
+			console.log(1,iPNT)
+			chainageToX(iPNT.x)
+		}
+
+
+
+
+		function rnd2(num) {
+			return Math.round(num*100)/100
+		}
+
+		function updateLength (start, end) {
+			startPosition = start*1000;
+			endPosition = end*1000;
+			_isRightToLeft = (startPosition > endPosition)?true:false;
+			if(_isRightToLeft)
+			{
+				trackLength = startPosition - endPosition;
 			}
-		})
-		.on( "mouseup", function() {
-			// stopMouseMove = true
-			d3.event.srcElement.stopPropagation();
-			if(!disableZoom) return 
-			var _width = _SVG.selectAll("rect.selection").attr('width')
-					var _height = _SVG.selectAll("rect.selection").attr('height')
-					var _x = _SVG.selectAll("rect.selection").attr('x')
-					var _y = _SVG.selectAll("rect.selection").attr('y')
-
-			d3.select('#svgMaskContainer').selectAll('svg').select('defs')
-				.select('#myClip')
-				.append('rect')
-				.attr('width',_width)
-				.attr('height',_height)
-				.attr('x',_x)
-				.attr('y',_y)
-			// remove selection frame
-			_SVG.selectAll( "rect.selection").remove();
-
-				// remove temporary selection marker class
-				_SVG.selectAll( 'rect.selection').classed( "selection", false);
-		})
-		.on( "mouseout", function() {
-			d3.event.srcElement.stopPropagation();
-			if(!disableZoom) return 
-			stopMouseMove = true
-			// if( d3.event.relatedTarget.tagName=='rect') {
-			//         // remove selection frame
-			// 		_SVG.selectAll( "rect.selection").remove();
-
-			//         // remove temporary selection marker class
-			//     d3.selectAll( 'g.state.selection').classed( "selection", false);
-			// }
-		});
-
-
-
-
-
-
+			else
+			{
+				trackLength = endPosition - startPosition;
 			}
+
+			console.log('trackLength:' + trackLength)
+		}
+
+		function chainageToX(chainage) {
+			var rate = chainage / 4685.90002
+			var x = (startPosition + rate * trackLength * (_isRightToLeft? -1:1)) * 0.001
+			console.log('x:' + x)
+			return x
+		}
+
+		if (loadXML != null){
+			loadXML.open("GET", SVGFile, true);
+			loadXML.onreadystatechange = handler;
+			loadXML.send();
 		}
 	}
 
 
-	function showPoint(evt) {
-		var target=evt.target
-		var _viewBox = document.getElementById('svgElement').viewBox
-		var w = 100
-		var h = 110
-		document.getElementById('svgElement').setAttribute('viewbox', '0 0 ' + w + ' ' + h);
-	
-		var pnt = svgElement.createSVGPoint();
-		pnt.x = evt.clientX;
-		pnt.y = evt.clientY;
-
-
-		var SCTM = target.getScreenCTM();
-		console.log("SCTM====")
-		console.log(1, target)
-		var iPNT = pnt.matrixTransform(SCTM.inverse());
-
-		console.log(SCTM + ":" +iPNT)
-		console.log(1,SCTM)
-		console.log(1,iPNT)
-		chainageToX(iPNT.x)
-	}
-
-
-	function rnd2(num) {
-		return Math.round(num*100)/100
-	}
-
-	function updateLength (start, end) {
-		startPosition = start*1000;
-		endPosition = end*1000;
-		_isRightToLeft = (startPosition > endPosition)?true:false;
-		if(_isRightToLeft)
-		{
-			trackLength = startPosition - endPosition;
-		}
-		else
-		{
-			trackLength = endPosition - startPosition;
-		}
-
-		console.log('trackLength:' + trackLength)
-	}
-
-	function chainageToX(chainage) {
-		var rate = chainage / 4685.90002
-		var x = (startPosition + rate * trackLength * (_isRightToLeft? -1:1)) * 0.001
-		console.log('x:' + x)
-		return x
-	}
-
-	if (loadXML != null){
-		loadXML.open("GET", SVGFile, true);
-		loadXML.onreadystatechange = handler;
-		loadXML.send();
-	}
-}
 	</script>
 </body>
 </html>
