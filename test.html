@@ -1,0 +1,278 @@
+<!DOCTYPEhtml>
+
+<html>
+
+<head>
+
+   <title></title>
+
+   <meta charset="UTF-8"/>
+
+   <script src="Scripts/jquery-1.7.1.js"></script>
+<script type="text/javascript" src="./js/jquery.min.js"></script>
+   <script src="http://d3js.org/d3.v3.min.js"></script>
+
+   <script>
+
+       var svgLineContainer = null; var zoom = null;
+
+       var translate = [0, 0], currentScale = 1;
+
+       var hasInitZoom = false, isDrag= false;
+
+       var imgUrl = "https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1543141959715&di=1e44ae54744326bffc25a81ebbfc381a&imgtype=0&src=http%3A%2F%2Fwww.auctionzealot.com%2Fmembers%2Fmadmaof4%2Fpict3430%25282%2529.jpg";
+
+       var width =500, autoHeight = 500;
+
+       $(function () {
+
+            var svg = d3.select("#d3LineDiv").append("svg").attr("id", "svg_obj_line").attr("width", width).attr("height", autoHeight).attr("xmlns", "http://www.w3.org/2000/svg");
+
+            svgLineContainer = svg.append("g").attr("id", "svg_obj_line123");
+
+            svgLineContainer.append("image").attr("x", 0).attr("y", 0).attr("width",width).attr("height", autoHeight).attr("id", "svg_obj_image").attr("xlink:href", imgUrl);
+
+ 
+
+            $("#btnStart").on("click", function () {
+
+                isDrag = false;
+
+                InitZoom();
+
+            });
+
+ 
+
+            $("#btnStop").on("click", function () {
+
+                stopZoom();
+
+                isDrag = true;
+
+            });
+
+ 
+
+            $("#btnDrag").on("click", function () {
+
+                stopZoom();
+
+                isDrag = true;
+
+                InitDrag();
+
+            });
+
+       });
+
+ 
+
+       function InitZoom() {
+
+           var bodyDom = d3.select("#svg_obj_line");
+
+            //缩放
+
+            zoom =d3.behavior.zoom().scaleExtent([1, 20]).on("zoom", zoomed);
+
+            function zoomed() {
+
+ 
+
+                //放大缩小
+
+                // now,constrain the x and y components of the translation by the
+
+                //dimensions of the viewport
+
+                var e = d3.event;
+
+                var tx = Math.min(0, Math.max(e.translate[0], width - width* e.scale));
+
+                var ty = Math.min(0, Math.max(e.translate[1], autoHeight -autoHeight * e.scale));
+
+                // then,update the zoom behavior's internal translation, so that
+
+                // itknows how to properly manipulate it on the next movement
+
+                zoom.translate([tx, ty]);
+
+                // andfinally, update the <g> element's transform attribute with the
+
+                //correct translation and scale (in reverse order)
+
+                svgLineContainer.attr("transform", [
+
+                  "translate(" + [tx, ty] + ")",
+
+                  "scale(" + e.scale + ")"
+
+                ].join(""));
+
+ 
+
+                translate = [tx, ty];
+
+                currentScale = e.scale;
+
+            }
+
+ 
+
+            if (!hasInitZoom) {
+
+                bodyDom.call(zoom);
+
+                hasInitZoom = true;
+
+            } else {
+
+                //调用zoom
+
+                bodyDom.call(zoom);
+
+ 
+
+                //恢复到上次zoom到的状态
+
+               d3.transition().duration(250).tween("zoom", function () {
+
+                    bodyDom.call(zoom.translate(translate).scale(currentScale).event);
+
+                });
+
+            }
+
+       }
+
+ 
+
+       function stopZoom() {
+
+            var bodyDom = d3.select("#svg_obj_line");
+
+            bodyDom.on("mousedown.zoom", null);
+
+            bodyDom.on("mousemove.zoom", null);
+
+            bodyDom.on("dblclick.zoom", null);
+
+            bodyDom.on("touchstart.zoom", null);
+
+            bodyDom.on("wheel.zoom", null);
+
+            bodyDom.on("mousewheel.zoom", null);
+
+            bodyDom.on("MozMousePixelScroll.zoom", null);
+
+       }
+
+       var startx= 0, starty = 0;
+
+       function InitDrag() {
+
+            var svgdrag = d3.behavior.drag().on("dragstart", function (d) { }).on("dragend", function (d) {
+
+                startx = 0; starty = 0;
+
+            }).on("drag", function (d) {
+
+                if (startx == 0 && starty == 0) {
+
+                    startx = d3.mouse(this)[0];
+
+                    starty = d3.mouse(this)[1];
+
+                } else {
+
+                    if (isDrag) {
+
+                        var currentx =d3.mouse(this)[0];
+
+                        var currenty =d3.mouse(this)[1];
+
+                        //删除选框rect
+
+                        var removeparam =d3.select("#d3LineDiv").select("#changeRect");
+
+                        if (removeparam) {
+
+                           removeparam.remove();
+
+                        }
+
+                        //绘制新的选框
+
+                        var rewidth = 0,reheigth = 0;
+
+                        rewidth =Math.abs(currentx - startx);
+
+                        reheigth =Math.abs(currenty - starty);
+
+                        if (currentx >startx) {
+
+                            if (currenty >starty) {
+
+                               svgLineContainer.append("rect").attr("id", "changeRect").attr("x", startx).attr("y", starty).attr("width", rewidth).attr("height", reheigth).attr("stroke", "blue").attr("stroke-width", 2).attr("fill", "rgba(0,0,255,0.2)");
+
+                            } else {
+
+                                svgLineContainer.append("rect").attr("id", "changeRect").attr("x", startx).attr("y", currenty).attr("width",rewidth).attr("height", reheigth).attr("stroke", "blue").attr("stroke-width", 2).attr("fill", "rgba(0,0,255,0.2)");
+
+                            }
+
+                        } else {
+
+                            if (currenty >starty) {
+
+                               svgLineContainer.append("rect").attr("id", "changeRect").attr("x", currentx).attr("y", starty).attr("width", rewidth).attr("height", reheigth).attr("stroke", "blue").attr("stroke-width", 2).attr("fill", "rgba(0,0,255,0.2)");
+
+                            } else {
+
+                               svgLineContainer.append("rect").attr("id", "changeRect").attr("x", currentx).attr("y", currenty).attr("width", rewidth).attr("height", reheigth).attr("stroke", "blue").attr("stroke-width", 2).attr("fill", "rgba(0,0,255,0.2)");
+
+                            }
+
+                        }
+
+                    }
+
+                }
+
+            });
+
+            //calldrag
+
+            svgLineContainer.call(svgdrag);
+
+       }
+
+   </script>
+
+</head>
+
+<body>
+
+   <div id="MainDiv"style="text-align:center;">
+
+       <button id="btnStart">StartZoom</button>
+
+       <button id="btnStop">StopZoom</button>
+
+       <button id="btnDrag">绘制</button>
+
+       <div id="d3LineDiv"style="margin-left: auto;margin-right: auto;margin-top: 10px;width:500px;height:500px;border:solid1pxred;">
+
+       </div>
+
+   </div>
+
+</body>
+
+</html>
+--------------------- 
+作者：Viccy_Yao 
+来源：CSDN 
+原文：https://blog.csdn.net/yhzrf/article/details/79291167 
+版权声明：本文为博主原创文章，转载请附上博文链接！
